@@ -1,32 +1,12 @@
 package org.openmrs.module.appframework.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.validation.Validator;
-
 import org.hibernate.Criteria;
 import org.hibernate.SessionFactory;
 import org.hibernate.classic.Session;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.runner.RunWith;
 import org.junit.Test;
-import org.openmrs.api.context.Context;
 import org.openmrs.api.db.hibernate.DbSessionFactory;
-import org.openmrs.Location;
 import org.openmrs.module.appframework.config.AppFrameworkConfig;
 import org.openmrs.module.appframework.context.AppContextModel;
 import org.openmrs.module.appframework.domain.AppDescriptor;
@@ -34,28 +14,34 @@ import org.openmrs.module.appframework.domain.Extension;
 import org.openmrs.module.appframework.domain.ExtensionPoint;
 import org.openmrs.module.appframework.feature.FeatureToggleProperties;
 import org.openmrs.module.appframework.feature.TestFeatureTogglePropertiesFactory;
-import org.openmrs.module.appframework.LoginLocationFilter;
 import org.openmrs.module.appframework.repository.AllAppDescriptors;
 import org.openmrs.module.appframework.repository.AllComponentsState;
 import org.openmrs.module.appframework.repository.AllFreeStandingExtensions;
-import org.openmrs.module.appframework.repository.AllLoginLocations;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(Context.class)
+import javax.validation.Validator;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public class AppFrameworkServiceImplTest  {
-	
+
 	private Validator validator = mock(Validator.class);
-	
+
     private AllAppDescriptors allAppDescriptors = new AllAppDescriptors(validator);
 
     private AllFreeStandingExtensions allFreeStandingExtensions = new AllFreeStandingExtensions(validator);
-    
-    private AllComponentsState allComponentsState = new AllComponentsState();
 
-    private AllLoginLocations allLoginLocations = new AllLoginLocations();
+    private AllComponentsState allComponentsState = new AllComponentsState();
 
     private FeatureToggleProperties featureToggles = TestFeatureTogglePropertiesFactory.get();
 
@@ -75,26 +61,10 @@ public class AppFrameworkServiceImplTest  {
 
     private Extension ext5;
 
-    private Location location1;
-
-    private Location location2;
-    
     private AppFrameworkServiceImpl service;
-
-    private LoginLocationFilter loginLocationFilter;
 
     @Before
     public void setUp() throws Exception {
-        loginLocationFilter = new LoginLocationFilter() {
-            @Override
-            public boolean accept(Location location) {
-                return true;
-            }
-        };
-
-        PowerMockito.mockStatic(Context.class);
-        when(Context.getRegisteredComponents(eq(LoginLocationFilter.class)))
-                .thenReturn(Arrays.asList(loginLocationFilter));
 
         featureToggles.setPropertiesFile(new File(this.getClass().getResource("/" + FeatureToggleProperties.FEATURE_TOGGLE_PROPERTIES_FILE_NAME).getFile()));
 
@@ -109,22 +79,6 @@ public class AppFrameworkServiceImplTest  {
         ext3 = new Extension("ext3", "app2", "extensionPoint1", "link", "label", "url", 2);
         ext4 = new Extension("ext4", "", "extensionPoint2", "link", "label", "url", 1);
         ext5 = new Extension("ext5", "", "extensionPoint2", "link", "label", "url", 0);
-
-        location1 = new Location();
-        location2 = new Location();
-
-        // populate login locations with data
-        location1.setId(1);
-        location1.setUuid("loginLocation1_uuid");
-        location1.setName("loginLocation1");
-
-        location2.setId(2);
-        location2.setUuid("loginLocation2_uuid");
-        location2.setName("loginLocation2");
-
-        // add the login locations
-        allLoginLocations.add(location1);
-        allLoginLocations.add(location2);
 
         // add some feature toggles to these apps & extensions
         app1.setFeatureToggle("app1Toggle");
@@ -143,15 +97,15 @@ public class AppFrameworkServiceImplTest  {
 
         // now add some free-standing extension
         allFreeStandingExtensions.add(Arrays.asList(ext3, ext4, ext5));
-        
+
         // to go through all the Hibernate stuff
         SessionFactory sessionFactory = mock(SessionFactory.class);
     	Session session = mock(Session.class);
     	when(session.createCriteria(any(Class.class))).thenReturn(mock(Criteria.class));
     	when(sessionFactory.getCurrentSession()).thenReturn(session);
     	allComponentsState.setSessionFactory(new DbSessionFactory(sessionFactory));
-    	
-    	service = new AppFrameworkServiceImpl(null, allAppDescriptors, allFreeStandingExtensions, allComponentsState, null, featureToggles, appFrameworkConfig, null, allLoginLocations);
+
+    	service = new AppFrameworkServiceImpl(null, allAppDescriptors, allFreeStandingExtensions, allComponentsState, null, featureToggles, appFrameworkConfig, null);
     }
 
     @After
@@ -216,7 +170,7 @@ public class AppFrameworkServiceImplTest  {
         ext3.setFeatureToggle("!ext3Toggle");
         ext4.setFeatureToggle("!ext4Toggle");
         ext5.setFeatureToggle("!ext5Toggle");
-        
+
         List<Extension> extensionPoints = service.getAllEnabledExtensions("extensionPoint2");
 
         assertEquals(2, extensionPoints.size());
@@ -247,7 +201,7 @@ public class AppFrameworkServiceImplTest  {
     }
 
     @Test
-    public void testUtilityFunctionForRequireExpressions() throws Exception {
+    public void testHasMemberWithPropertyUtilityFunctionForRequireExpressions() throws Exception {
         AppContextModel contextModel = new AppContextModel();
         Map<String, Object> tag = new HashMap<String, Object>();
         tag.put("display", "Login Location");
@@ -261,22 +215,22 @@ public class AppFrameworkServiceImplTest  {
         assertFalse(service.checkRequireExpression(extensionRequiring("hasMemberWithProperty(sessionLocation.tags, 'display', 'Not this tag')"), contextModel));
     }
 
+
     @Test
-    public void testGetLoginLocationsShouldReturnAllLoginLocations() throws Exception {
-        // setup
-        List<Location> loginLocations = allLoginLocations.getLoginLocations();
+    public void testSomeUtilityFunctionForRequireExpression() throws Exception {
 
-        // replay
-        List<Location> actualLoginLocations = service.getLoginLocations();
+        List<Map<String,Map>> test = new ArrayList<Map<String, Map>>();
+        test.add(new HashMap<String, Map>());
+        test.add(new HashMap<String, Map>());
+        test.get(0).put("encounter", new HashMap<String, Integer>());
+        test.get(0).get("encounter").put("encounterType", 1);
+        test.get(1).put("encounter", new HashMap<String, Integer>());
+        test.get(1).get("encounter").put("encounterType", 2);
 
-        // verify
-        assertEquals(loginLocations.size(), actualLoginLocations.size());
-        assertEquals(loginLocations.get(0).getId(), actualLoginLocations.get(0).getId());
-        assertEquals(loginLocations.get(0).getName(), actualLoginLocations.get(0).getName());
-        assertEquals(loginLocations.get(0).getUuid(), actualLoginLocations.get(0).getUuid());
-        assertEquals(loginLocations.get(1).getId(), actualLoginLocations.get(1).getId());
-        assertEquals(loginLocations.get(1).getName(), actualLoginLocations.get(1).getName());
-        assertEquals(loginLocations.get(1).getUuid(), actualLoginLocations.get(1).getUuid());
+        AppContextModel contextModel = new AppContextModel();
+        contextModel.put("test", test);
+
+        assertTrue(service.checkRequireExpression(extensionRequiring("some(test, function(it) { return it.encounter.encounterType === 1})"), contextModel));
     }
 
     private Extension extensionRequiring(String requires) {
